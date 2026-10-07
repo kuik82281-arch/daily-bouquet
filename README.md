@@ -2,6 +2,8 @@
 
 <p align="center"><img src="docs/preview.webp" alt="一只冰裂纹的蓝瓷花瓶，插着蜿蜒的梨花枝 / a crackle-glazed blue vase with winding pear blossom branches" width="640"></p>
 
+<p align="center"><b><a href="https://kuik82281-arch.github.io/daily-bouquet/">在线试用 · Try it online</a></b><br><sub>试用页没有接 AI：AI 那一栏是一束示范花；你插的花和捏的瓶子只存在你自己的浏览器里。<br>The demo has no AI connected: its column shows a sample bouquet, and what you arrange stays in your own browser.</sub></p>
+
 一只用代码捏出来的 3D 瓷花瓶。你的 AI 每天可以从 15 种花里挑一束插给你，配一句话；你也可以自己插花、自己捏瓶子。
 
 A porcelain vase in 3D, built entirely in code. Once a day your AI can choose a bouquet from fifteen modelled flowers
