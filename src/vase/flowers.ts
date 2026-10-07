@@ -49,7 +49,6 @@ function paint(geo: THREE.BufferGeometry, color: THREE.Color | ((p: THREE.Vector
 type Shape = (t: number) => number;
 const ROUND: Shape = (t) => Math.max(0.05, Math.sin(Math.PI * t ** 1.35) ** 0.55);
 const POINTED: Shape = (t) => Math.max(0.04, Math.sin(Math.PI * t ** 0.7));
-const LILY: Shape = (t) => Math.max(0.05, Math.sin(Math.PI * t ** 0.85) ** 0.5);
 const FULL: Shape = (t) => Math.max(0.04, Math.sin(Math.PI * t ** 0.75) ** 0.8);
 const STRAP: Shape = (t) => Math.max(0.05, Math.min(1, t * 5) * (t < 0.8 ? 1 : Math.sqrt(Math.max(0, 1 - ((t - 0.8) / 0.2) ** 2))));
 
@@ -180,24 +179,81 @@ function tulip(color: FlowerColor) {
   return parts;
 }
 
+/**
+ * One lily petal, as in her photo: broad in the middle and narrowing to a soft point, a valley down the midrib with
+ * the two halves lifting from it, arcing outward and the tip rolling a little back, the edge faintly wavy; pale
+ * green-gold at the throat and along the midrib, white beyond, and small raised spots over the lower half.
+ */
+function lilyPetal(w: number, l: number, colors: { throat: THREE.Color; body: THREE.Color; spot: THREE.Color }, rand: Rand) {
+  const sw = 10, sl = 14;
+  const width = (t: number) => w * PW * Math.max(0.05, Math.sin(Math.PI * t ** 0.8) ** 0.5);
+  const at = (s: number, t: number) => {
+    const half = width(t);
+    return new THREE.Vector3(
+      s * half,
+      t * l,
+      C(0.5) * Math.abs(s) ** 1.4 * half - 0.3 * t * t * l - 0.28 * t ** 4 * l + 0.035 * w * Math.sin(s * 5 + t * 7) * t,
+    );
+  };
+  const pos: number[] = [], cols: number[] = [], idx: number[] = [];
+  const c = new THREE.Color();
+  for (let j = 0; j <= sl; j++) {
+    const t = j / sl;
+    for (let i = 0; i <= sw; i++) {
+      const s = (i / sw) * 2 - 1, p = at(s, t);
+      pos.push(p.x, p.y, p.z);
+      c.copy(colors.throat).lerp(colors.body, Math.min(1, t * 3.2)).lerp(colors.throat, 0.45 * (1 - Math.abs(s)) ** 5 * (1 - t));
+      cols.push(c.r, c.g, c.b);
+    }
+  }
+  for (let j = 0; j < sl; j++) for (let i = 0; i < sw; i++) {
+    const a = j * (sw + 1) + i;
+    idx.push(a, a + 1, a + sw + 2, a, a + sw + 2, a + sw + 1);
+  }
+  const sheet = new THREE.BufferGeometry();
+  sheet.setIndex(idx);
+  sheet.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  sheet.computeVertexNormals();
+  sheet.setAttribute('color', new THREE.Float32BufferAttribute(cols, 3));
+  const parts = [sheet];
+  const dot = sphere(0.004, colors.spot, 4, 3).scale(1, 1, 0.45);
+  for (let k = 0; k < 18; k++) {
+    const t = 0.1 + rand() * 0.38, s = (rand() * 2 - 1) * 0.75 * (rand() < 0.5 ? 1 : 0.6);
+    const p = at(s, t);
+    parts.push(dot.clone().translate(p.x, p.y, p.z + 0.003));
+  }
+  dot.dispose();
+  return mergeGeometries(parts)!;
+}
+
 function lily(color: FlowerColor) {
+  const rand = seeded(`lily:${color}`);
   const base = col(PALETTE[color]);
-  const throat = color === 'white' ? col('#dfe6b8') : base.clone().multiplyScalar(0.75);
-  const tip = color === 'white' ? base : base.clone().lerp(WHITE, 0.25);
+  const colors = color === 'white'
+    ? { throat: col('#d9e2a8'), body: base, spot: col('#e6dcc0') }
+    : { throat: base.clone().lerp(col('#f3e4a0'), 0.4), body: base.clone().lerp(WHITE, 0.15), spot: base.clone().multiplyScalar(0.62) };
   const parts: THREE.BufferGeometry[] = [];
-  // two whorls of six broad petals (the outer three a little lower and more open)
+  // six petals in two whorls: the inner three broader and a little more upright, the outer three narrower and lower
   for (let k = 0; k < 6; k++) {
     const outer = k % 2 === 1;
-    // a trumpet at the throat, flaring out along the petal; broad, round-tipped, the edges a little wavy
-    parts.push(place(petal({ w: outer ? 0.14 : 0.16, l: 0.42, shape: LILY, cup: C(0.75), bend: -0.28, curl: -0.4, ruffle: 0.18, base: throat, tip, edge: 0.1, seg: [9, 12] }),
-      (k * Math.PI) / 3, T(outer ? 0.36 : 0.28), outer ? 0.03 : 0.018, outer ? -0.01 : 0));
+    parts.push(place(lilyPetal(outer ? 0.155 : 0.175, 0.44, colors, rand), (k * Math.PI) / 3 + (rand() - 0.5) * 0.12, T(outer ? 0.7 : 0.6) + (rand() - 0.5) * 0.08, outer ? 0.028 : 0.016, outer ? -0.012 : 0));
   }
-  const filament = col('#d8dcae'), anther = col('#9c3f1c');
+  // six long pale filaments bowing outward, each holding a long golden anther across its tip, and the pistil
+  const filament = col('#e8ecd2'), anther = col('#b4832a');
+  const antherG = sphere(0.011, anther, 8, 5).scale(1, 4, 0.8);
   for (let k = 0; k < 6; k++) {
-    parts.push(place(rod(0.004, 0.3, filament, 4), (k * Math.PI) / 3 + Math.PI / 6, 0.42, 0.01));
-    parts.push(place(sphere(0.017, anther, 6, 4).scale(0.55, 0.55, 1.4).translate(0, 0.3, 0), (k * Math.PI) / 3 + Math.PI / 6, 0.42, 0.01));
+    const a = (k * Math.PI) / 3 + Math.PI / 6 + (rand() - 0.5) * 0.2, lean = 0.32 + rand() * 0.1, len = 0.27 + rand() * 0.05;
+    const dir = new THREE.Vector3(Math.sin(lean) * Math.cos(a), Math.cos(lean), Math.sin(lean) * Math.sin(a));
+    const end = dir.clone().multiplyScalar(len);
+    const curve = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.02, 0), dir.clone().multiplyScalar(len * 0.55).add(new THREE.Vector3(0, 0.03, 0)), end);
+    parts.push(paint(new THREE.TubeGeometry(curve, 8, 0.0032, 4, false), filament));
+    const across = new THREE.Vector3().crossVectors(dir, UP).normalize();
+    parts.push(aim(antherG, end, across.applyAxisAngle(dir, (rand() - 0.5) * 0.6)));
   }
-  parts.push(rod(0.006, 0.33, col('#b9c48a')), sphere(0.016, col('#8ea050'), 6, 4).translate(0, 0.33, 0));
+  antherG.dispose();
+  const pistil = new THREE.QuadraticBezierCurve3(new THREE.Vector3(0, 0.02, 0), new THREE.Vector3(0.01, 0.2, 0.005), new THREE.Vector3(0.02, 0.36, 0.01));
+  parts.push(paint(new THREE.TubeGeometry(pistil, 10, 0.005, 5, false), col('#dfe6c0')));
+  for (let k = 0; k < 3; k++) parts.push(sphere(0.011, col('#cfd9a6'), 6, 4).translate(0.02 + Math.cos(k * 2.09) * 0.009, 0.365, 0.01 + Math.sin(k * 2.09) * 0.009));
   return parts;
 }
 
