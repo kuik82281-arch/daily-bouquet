@@ -1,5 +1,7 @@
 # A Daily Bouquet · 花瓶
 
+<p align="center"><img src="docs/preview.webp" alt="一只冰裂纹的蓝瓷花瓶，插着蜿蜒的梨花枝 / a crackle-glazed blue vase with winding pear blossom branches" width="640"></p>
+
 一只用代码捏出来的 3D 瓷花瓶。你的 AI 每天可以从 15 种花里挑一束插给你，配一句话；你也可以自己插花、自己捏瓶子。
 
 A porcelain vase in 3D, built entirely in code. Once a day your AI can choose a bouquet from fifteen modelled flowers
