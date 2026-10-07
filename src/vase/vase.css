@@ -1,0 +1,180 @@
+/* 花瓶 (VasePage.tsx): the porcelain vase on black, his note beneath it. Classes carry the vs- prefix. */
+.vs-page, .vs-page *, .vs-page *::before, .vs-page *::after { box-sizing: border-box; }
+.vs-page {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #050403;
+  color: #ece4d8;
+  font-family: "Songti SC", "Noto Serif SC", "STSong", Georgia, serif;
+}
+.vs-glow {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 60% 46% at 50% 36%, rgb(92 78 64 / 42%), transparent 70%),
+    radial-gradient(ellipse 90% 30% at 50% 64%, rgb(40 32 26 / 60%), transparent 75%);
+  pointer-events: none;
+}
+.vs-stage { position: relative; flex: 1 1 auto; min-height: 0; touch-action: none; }
+.vs-stage canvas { display: block; }
+
+.vs-top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: calc(env(safe-area-inset-top, 0px) + 12px) 16px 0;
+  pointer-events: none;
+}
+.vs-top > * { pointer-events: auto; }
+.vs-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border: 1px solid rgb(236 228 216 / 22%);
+  border-radius: 50%;
+  background: rgb(20 16 13 / 55%);
+  color: inherit;
+  cursor: pointer;
+}
+.vs-icon svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.vs-heading { display: grid; justify-items: center; line-height: 1.2; text-align: center; }
+.vs-heading small { color: #a99a86; font: italic 12px/1.2 Georgia, "Times New Roman", serif; letter-spacing: .12em; }
+.vs-heading b { margin-top: 2px; font-weight: 500; font-size: 17px; letter-spacing: .14em; }
+.vs-pill {
+  min-width: 64px;
+  padding: 7px 12px;
+  border: 1px solid rgb(236 228 216 / 26%);
+  border-radius: 999px;
+  background: rgb(20 16 13 / 55%);
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  letter-spacing: .08em;
+  cursor: pointer;
+}
+.vs-pill.is-on { border-color: #d9c39d; color: #f2dfbd; }
+
+.vs-card {
+  position: relative;
+  z-index: 2;
+  flex: 0 0 auto;
+  max-height: 40vh;
+  overflow-y: auto;
+  margin: 0 auto;
+  width: min(100%, 560px);
+  padding: 16px 22px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  border-top: 1px solid rgb(236 228 216 / 12%);
+  background: linear-gradient(to bottom, rgb(12 10 8 / 70%), rgb(5 4 3 / 92%));
+}
+.vs-title { margin: 0 0 4px; color: #d9c39d; font-size: 15px; letter-spacing: .1em; }
+.vs-note { margin: 0; font-size: 16px; line-height: 1.75; white-space: pre-wrap; }
+.vs-sign { margin: 8px 0 0; color: #a99a86; font: italic 13px/1.4 Georgia, "Times New Roman", serif; text-align: right; }
+.vs-stems { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 12px 0 0; color: #c9bba8; font-size: 12.5px; }
+.vs-stems span { display: inline-flex; align-items: center; gap: 6px; }
+.vs-stems i, .vs-days i, .vs-dots i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / 18%); }
+.vs-empty { margin: 4px 0; color: #b9ab98; font-size: 14.5px; line-height: 1.7; text-align: center; }
+.vs-lead { margin: 0 0 10px; color: #c9bba8; font-size: 13.5px; }
+.vs-catalog { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.vs-catalog li { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 2px 10px; }
+.vs-catalog b { font-weight: 500; font-size: 14.5px; }
+.vs-dots { display: inline-flex; gap: 5px; }
+.vs-catalog small { grid-column: 1 / -1; color: #a99a86; font-size: 12px; }
+
+.vs-days { display: flex; gap: 8px; margin: 14px -22px 0; padding: 0 22px 2px; overflow-x: auto; scrollbar-width: none; }
+.vs-days::-webkit-scrollbar { display: none; }
+.vs-days button {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 11px;
+  border: 1px solid rgb(236 228 216 / 18%);
+  border-radius: 999px;
+  background: transparent;
+  color: #b9ab98;
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.vs-days button.is-on { border-color: #d9c39d; color: #f2dfbd; }
+
+/* 他插的 / 我来插 */
+.vs-tabs { display: flex; gap: 4px; width: max-content; margin: 0 auto 12px; padding: 3px; border: 1px solid rgb(236 228 216 / 16%); border-radius: 999px; }
+.vs-tabs button { padding: 5px 16px; border: 0; border-radius: 999px; background: transparent; color: #a99a86; font: inherit; font-size: 13px; letter-spacing: .08em; cursor: pointer; }
+.vs-tabs button.is-on { background: rgb(236 228 216 / 14%); color: #f2dfbd; }
+
+/* her own vase: drop in a flower, choose one, turn / tilt / lengthen it */
+.vs-picker { display: flex; gap: 7px; margin: 0 -22px; padding: 0 22px 4px; overflow-x: auto; scrollbar-width: none; }
+.vs-picker::-webkit-scrollbar { display: none; }
+.vs-picker button {
+  display: inline-flex; flex: 0 0 auto; align-items: center; gap: 6px;
+  padding: 6px 11px; border: 1px solid rgb(236 228 216 / 20%); border-radius: 999px;
+  background: transparent; color: #d8cbb8; font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.vs-picker button:disabled { opacity: .4; cursor: default; }
+.vs-picker i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / 18%); }
+.vs-editor { display: grid; gap: 6px; margin-top: 12px; }
+.vs-ed-head { display: flex; align-items: center; gap: 10px; }
+.vs-ed-head b { font-weight: 500; font-size: 15px; color: #f2dfbd; }
+.vs-dots--pick { gap: 7px; }
+.vs-dots--pick button { width: 16px; height: 16px; padding: 0; border: 0; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / 25%); cursor: pointer; }
+.vs-dots--pick button.is-on { box-shadow: 0 0 0 2px #050403, 0 0 0 3px #d9c39d; }
+.vs-ed-remove { margin-left: auto; padding: 4px 11px; border: 1px solid rgb(236 228 216 / 22%); border-radius: 999px; background: transparent; color: #b9ab98; font: inherit; font-size: 12px; cursor: pointer; }
+.vs-editor label { display: grid; grid-template-columns: 3em 1fr; align-items: center; gap: 10px; color: #b9ab98; font-size: 12.5px; }
+.vs-editor input[type="range"] { width: 100%; accent-color: #d9c39d; }
+.vs-hint { margin: 12px 0 0; color: #a99a86; font-size: 13px; line-height: 1.6; }
+.vs-actions { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+.vs-actions span { flex: 1; min-width: 0; color: #a99a86; font-size: 12px; }
+.vs-actions button { padding: 7px 14px; border: 1px solid rgb(236 228 216 / 24%); border-radius: 999px; background: transparent; color: #d8cbb8; font: inherit; font-size: 13px; cursor: pointer; }
+.vs-actions button:disabled { opacity: .4; cursor: default; }
+.vs-actions .vs-save { border-color: #d9c39d; background: #d9c39d; color: #1a140f; }
+
+/* 捏瓶子 (VaseShaper.tsx) */
+.vs-shaper h3 { margin: 14px 0 7px; color: #d9c39d; font-weight: 500; font-size: 13px; letter-spacing: .12em; }
+.vs-shaper h3:first-child { margin-top: 2px; }
+.vs-shaper h3 small { margin-left: 6px; color: #8f8272; font-size: 11px; letter-spacing: 0; }
+.vs-swatches { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.vs-swatches > button { width: 24px; height: 24px; padding: 0; border: 0; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / 22%); cursor: pointer; }
+.vs-swatches > button.is-on { box-shadow: 0 0 0 2px #050403, 0 0 0 3.5px #d9c39d; }
+.vs-swatch-any { display: inline-flex; align-items: center; gap: 5px; color: #b9ab98; font-size: 12px; cursor: pointer; }
+.vs-swatch-any input { width: 26px; height: 26px; padding: 0; border: 1px solid rgb(236 228 216 / 25%); border-radius: 50%; background: none; cursor: pointer; }
+.vs-seg { display: flex; flex-wrap: wrap; gap: 6px; }
+.vs-seg button, .vs-chips button, .vs-ed-row button {
+  padding: 6px 12px; border: 1px solid rgb(236 228 216 / 20%); border-radius: 999px;
+  background: transparent; color: #d8cbb8; font: inherit; font-size: 12.5px; cursor: pointer;
+}
+.vs-seg button.is-on, .vs-chips button.is-on { border-color: #d9c39d; background: rgb(217 195 157 / 16%); color: #f2dfbd; }
+.vs-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.vs-chips--add { margin-top: 8px; }
+.vs-chips--add button { border-style: dashed; color: #b9ab98; }
+.vs-chips button:disabled { opacity: .4; cursor: default; }
+.vs-sliders { display: grid; gap: 6px; }
+.vs-sliders label, .vs-relief-ed label { display: grid; grid-template-columns: 5.2em 1fr; align-items: center; gap: 10px; color: #b9ab98; font-size: 12.5px; }
+.vs-sliders input[type="range"] { width: 100%; accent-color: #d9c39d; }
+.vs-sliders label.vs-check { display: flex; gap: 8px; margin-top: 4px; }
+.vs-check input { accent-color: #d9c39d; }
+.vs-relief-ed { margin-top: 10px; padding: 10px 12px; border: 1px solid rgb(217 195 157 / 25%); border-radius: 12px; }
+.vs-ed-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 4px; }
+.vs-editor label { grid-template-columns: 5.2em 1fr; }
+.vs-card { max-height: 46vh; }
+.vs-none { color: #8f8272; font-size: 12px; }
+.vs-win-color { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; color: #b9ab98; font-size: 12.5px; }
+.vs-win-color > span { width: 5.2em; }
+.vs-win-color > button { width: 20px; height: 20px; padding: 0; border: 0; border-radius: 50%; box-shadow: 0 0 0 1px rgb(255 255 255 / 22%); cursor: pointer; }
+.vs-win-color > button.is-on { box-shadow: 0 0 0 2px #050403, 0 0 0 3.5px #d9c39d; }
+.vs-ed-row .vs-danger { border-color: rgb(226 140 140 / 55%); color: #f0b8b0; }
+.vs-neck { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; color: #b9ab98; font-size: 12.5px; }
+.vs-neck input { accent-color: #d9c39d; }
+.vs-win-color > .vs-pick { width: auto; height: auto; padding: 4px 12px; border-radius: 999px; background: transparent; color: #d8cbb8; font: inherit; font-size: 12px; box-shadow: 0 0 0 1px rgb(236 228 216 / 22%); }
+.vs-win-color > .vs-pick.is-on { background: rgb(217 195 157 / 18%); color: #f2dfbd; box-shadow: 0 0 0 1px #d9c39d; }
+.vs-icon--blank { visibility: hidden; }
