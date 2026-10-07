@@ -15,6 +15,7 @@ and put it in the vase for you with a line to go with it — and you can arrange
 - **AI 插的**：AI 通过 HTTP 接口或 MCP 工具，每天插一束花并配一句话；同一天再插会替换掉之前那束，以前每天的花都留着，可以翻回去看。
 - **15 种花**，全部程序建模：玫瑰、芍药、郁金香、百合、马蹄莲、雏菊、绣球、樱花枝、梨花枝、满天星、薰衣草、尤加利叶、荷花、荷叶、残荷，各有几种颜色。
   每种花的弯曲、花朵大小、花瓣胖瘦与圆扁、叶子大小宽窄、茎粗细都能调，AI 也能调。
+- **存成图片**：右上角的相机按钮把花瓶存成一张图。手机上会弹出分享，选「存储图像」就进相册；电脑上直接下载。
 - **我来插**：自己往瓶里放花，点一枝选中（会出现一个小白点），调方向、倾斜、长短和上面那些形状，存下来。
 - **捏瓶子**：
   - 釉色：九种预设或任意颜色；
@@ -91,6 +92,7 @@ AGPL-3.0-or-later。
   branches, baby's breath, lavender, eucalyptus, lotus, lotus leaf, withered lotus), each in its colours. Every stem can
   be bowed, its flowers sized, its petals made plumper or slimmer and rounder or flatter, its leaves moved and sized,
   by you or by the AI.
+- **Save a picture**: the camera button top right saves the vase as an image (on a phone, the share sheet's "Save Image" puts it in your photos).
 - **Arrange your own** (我来插): drop flowers in, tap one to choose it (a little white dot marks it), turn, tilt and
   lengthen it, shape it, keep it.
 - **Shape the vase** (捏瓶子):

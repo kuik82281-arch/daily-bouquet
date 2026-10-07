@@ -177,4 +177,13 @@
 .vs-neck input { accent-color: #d9c39d; }
 .vs-win-color > .vs-pick { width: auto; height: auto; padding: 4px 12px; border-radius: 999px; background: transparent; color: #d8cbb8; font: inherit; font-size: 12px; box-shadow: 0 0 0 1px rgb(236 228 216 / 22%); }
 .vs-win-color > .vs-pick.is-on { background: rgb(217 195 157 / 18%); color: #f2dfbd; box-shadow: 0 0 0 1px #d9c39d; }
+
+/* 存成图片 */
+.vs-top-right { display: flex; align-items: center; gap: 8px; }
+.vs-icon svg circle { fill: none; stroke: currentColor; stroke-width: 1.8; }
+.vs-toast {
+  position: absolute; top: calc(env(safe-area-inset-top, 0px) + 60px); left: 50%; z-index: 3;
+  margin: 0; padding: 7px 14px; border-radius: 999px; transform: translateX(-50%);
+  background: rgb(20 16 13 / 82%); color: #f2dfbd; font-size: 12.5px; white-space: nowrap;
+}
 .vs-icon--blank { visibility: hidden; }

@@ -55,6 +55,31 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [note, setNote] = useState('');
+  const [saved, setSaved] = useState('');
+  // the vase as a picture: on a phone the share sheet offers 存储图像 (to the photo album); elsewhere it downloads
+  const saveImage = async () => {
+    const scene = sceneRef.current;
+    if (!scene) return;
+    try {
+      const blob = await scene.snapshot('A Daily Bouquet');
+      const d = new Date();
+      const file = new File([blob], `bouquet-${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}.png`, { type: 'image/png' });
+      if (navigator.canShare?.({ files: [file] })) {
+        try { await navigator.share({ files: [file] }); setSaved('选「存储图像」就能存进相册'); }
+        catch (error) { if ((error as Error).name !== 'AbortError') throw error; return; }
+      } else {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = file.name;
+        a.click();
+        window.setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+        setSaved('图片已保存');
+      }
+    } catch {
+      setSaved('没存上，再试一次');
+    }
+    window.setTimeout(() => setSaved(''), 2600);
+  };
   const mineRef = useRef(mine);
   mineRef.current = mine;
 
@@ -236,7 +261,13 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
           <small>{catalog ? 'Herbarium' : mode === 'mine' ? 'My Own Vase' : mode === 'vase' ? 'Shape the Vase' : 'A Daily Bouquet'}</small>
           <b>{catalog ? '花谱' : mode === 'mine' ? '我来插' : mode === 'vase' ? '捏瓶子' : shown ? dayLabel(shown.date) : isToday ? '今天' : dayLabel(picked!)}</b>
         </div>
-        <button type="button" className={`vs-pill${catalog ? ' is-on' : ''}`} onClick={() => setCatalog((c) => !c)}>{catalog ? '回到花瓶' : '花谱'}</button>
+        <div className="vs-top-right">
+          <button type="button" className="vs-icon" onClick={() => void saveImage()} aria-label="把花瓶存成图片" title="存成图片">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8.5h3l1.6-2.5h6.8L17 8.5h3v10H4z" /><circle cx="12" cy="13.2" r="3.4" /></svg>
+          </button>
+          <button type="button" className={`vs-pill${catalog ? ' is-on' : ''}`} onClick={() => setCatalog((c) => !c)}>{catalog ? '回到花瓶' : '花谱'}</button>
+        </div>
+        {saved && <p className="vs-toast" role="status">{saved}</p>}
       </header>
 
       <section className="vs-card" aria-live="polite">

@@ -770,6 +770,32 @@ export class VaseScene {
 
   setAutoRotate(on: boolean) { this.controls.autoRotate = on; }
 
+  /** A picture of the vase as it stands now (without the white dot), on the page's dark ground with its warm glow and a
+   * small caption, as a PNG to save or share. */
+  snapshot(caption: string): Promise<Blob> {
+    const markerWas = this.marker.visible;
+    this.marker.visible = false;
+    this.renderer.render(this.scene, this.camera);
+    const src = this.renderer.domElement, w = src.width, h = src.height;
+    const out = document.createElement('canvas');
+    out.width = w; out.height = h;
+    const g = out.getContext('2d')!;
+    g.fillStyle = '#050403';
+    g.fillRect(0, 0, w, h);
+    const glow = g.createRadialGradient(w / 2, h * 0.42, 0, w / 2, h * 0.42, Math.max(w, h) * 0.55);
+    glow.addColorStop(0, 'rgba(92,78,64,0.42)');
+    glow.addColorStop(1, 'rgba(92,78,64,0)');
+    g.fillStyle = glow;
+    g.fillRect(0, 0, w, h);
+    g.drawImage(src, 0, 0);
+    this.marker.visible = markerWas;
+    g.fillStyle = 'rgba(236,228,216,0.72)';
+    g.font = `italic ${Math.round(h * 0.024)}px Georgia, "Times New Roman", serif`;
+    g.textAlign = 'center';
+    g.fillText(caption, w / 2, h - h * 0.045);
+    return new Promise((resolve, reject) => out.toBlob((b) => (b ? resolve(b) : reject(new Error('no image'))), 'image/png'));
+  }
+
   /** Rebuild the vase as she has styled it (the flowers stay). */
   setStyle(style: VaseStyle) {
     const key = JSON.stringify(style);
