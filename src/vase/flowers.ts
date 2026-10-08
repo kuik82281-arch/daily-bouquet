@@ -733,3 +733,43 @@ export function buildStem(kind: FlowerKind, color: FlowerColor, curve: THREE.Cur
   parts.forEach((p) => p.dispose());
   return merged;
 }
+
+// ---- petals that come off ----------------------------------------------------------------------------------------
+
+const shedCache = new Map<string, THREE.BufferGeometry | null>();
+/**
+ * One petal let go by a flower of this kind: its own shape and colours, at the size of the flower's middle petals (in the
+ * flower's own units - the caller scales it as the flower is scaled), centred on itself. Null for what does not shed:
+ * leaves (eucalyptus, lotus leaf), the calla's single spathe, the dry withered pod.
+ */
+export function shedPetal(kind: FlowerKind, color: FlowerColor, plump = 1): THREE.BufferGeometry | null {
+  const pw = Math.round(plump * 20) / 20;
+  const key = `${kind}:${color}:${pw}`;
+  if (shedCache.has(key)) return shedCache.get(key)!;
+  const base = col(PALETTE[color]);
+  PW = pw;
+  let g: THREE.BufferGeometry | null = null;
+  switch (kind) {
+    case 'rose': g = petal({ w: 0.095, l: 0.14, cup: 0.9, bend: 0.06, curl: -0.1, seg: [7, 8], base: base.clone().multiplyScalar(color === 'white' || color === 'champagne' ? 0.82 : 0.6), tip: base, edge: 0.14 }); break;
+    case 'peony': g = petal({ w: 0.13, l: 0.17, cup: 0.6, bend: 0.05, ruffle: 0.22, seg: [8, 8], base: base.clone().lerp(col('#c2546e'), color === 'white' ? 0.12 : 0.3), tip: base.clone().lerp(WHITE, 0.1), edge: 0.12 }); break;
+    case 'tulip': g = petal({ w: 0.09, l: 0.25, cup: 1.05, bend: 0.14, seg: [6, 9], base: base.clone().lerp(col('#f3e7c6'), 0.4), tip: base }); break;
+    case 'lily': g = petal({ w: 0.12, l: 0.34, shape: POINTED, cup: 0.5, bend: -0.3, curl: -0.28, seg: [8, 12], base: col('#e9edc9').lerp(base, 0.4), tip: base, edge: 0.05 }); break;
+    case 'lotus': g = petal({ w: 0.1, l: 0.25, shape: FULL, cup: 0.7, bend: 0.06, seg: [7, 9], base: col('#f8f1e6'), tip: color === 'pink' ? col('#e0718f') : col('#f6f4e8'), edge: 0.08 }); break;
+    case 'daisy': g = petal({ w: 0.022, l: 0.14, shape: STRAP, cup: 0.15, bend: -0.04, seg: [3, 6], base: col('#e6e2cf'), tip: WHITE }); break;
+    case 'hydrangea': {
+      // a whole little floret drops, four petals and its eye
+      const fp = petal({ w: 0.04, l: 0.06, cup: 0.25, base: base.clone().multiplyScalar(0.85), tip: base, seg: [4, 4] });
+      g = mergeGeometries([0, 1, 2, 3].map((k) => place(fp, (k * Math.PI) / 2 + 0.4, 1.35, 0.005)).concat(sphere(0.008, col('#f4f0e2'), 5, 4)));
+      break;
+    }
+    case 'blossom': g = petal({ w: 0.03, l: 0.05, cup: 0.35, seg: [4, 4], base: col(color === 'white' ? '#e9a7b8' : '#d76c8a').lerp(base, 0.5), tip: base }); break;
+    case 'pear-blossom': g = petal({ w: 0.036, l: 0.058, shape: OBOVATE, cup: 0.22, bend: -0.05, ruffle: 0.12, seg: [7, 7], base: col('#f1ead2'), tip: WHITE, edge: 0.05 }); break;
+    case 'babys-breath': g = sphere(0.013, base, 5, 4); break;
+    case 'lavender': g = sphere(0.024, col(PALETTE.purple).lerp(col('#8a6fc8'), 0.4), 6, 4).scale(0.8, 1.3, 0.8); break;
+    default: g = null;
+  }
+  PW = 1;
+  if (g) { g.computeBoundingBox(); const c = g.boundingBox!.getCenter(new THREE.Vector3()); g.translate(-c.x, -c.y, -c.z); }
+  shedCache.set(key, g);
+  return g;
+}

@@ -186,4 +186,8 @@
   margin: 0; padding: 7px 14px; border-radius: 999px; transform: translateX(-50%);
   background: rgb(20 16 13 / 82%); color: #f2dfbd; font-size: 12.5px; white-space: nowrap;
 }
+
+/* nearer / further, down the right edge under the top bar */
+.vs-zoom { position: absolute; top: calc(env(safe-area-inset-top, 0px) + 64px); right: 16px; z-index: 2; display: grid; gap: 8px; }
+.vs-zoom .vs-icon { font-size: 18px; line-height: 1; }
 .vs-icon--blank { visibility: hidden; }

@@ -1,17 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { COLOR_NAMES, FLOWERS, MAX_HER_STEMS, POSE_LIMITS, STEM_LIMITS, flowerSpec, type Bouquet, type BouquetStem, type FlowerKind, type HerVase, type PosedStem, type StemShape } from './flowerCatalog';
+import { COLOR_NAMES, FLOWERS, POSE_LIMITS, STEM_LIMITS, flowerSpec, type Bouquet, type BouquetStem, type FlowerKind, type HerVase, type PosedStem, type StemShape } from './flowerCatalog';
 import { PALETTE } from './flowers';
 import type { VaseScene } from './vaseScene';
 import VaseShaper from './VaseShaper';
 import { DEFAULT_STYLE, RELIEF_LIMITS, WINDOW_LIMITS, cleanStyle, type VaseStyle } from './vaseStyle';
 import './vase.css';
 
-// 花瓶 / A Daily Bouquet: the bouquet the AI put in the porcelain vase today (through the API or the MCP tool,
-// server/store.ts), turning slowly on black, with what it wrote beside it; the days before are kept to look back on. 我来插 is her own vase: she drops in
-// any of the flowers, taps one to choose it, and turns, tilts and lengthens it with sliders; 插好了 keeps it (and the AI
-// hears the user arranged one today); she can also bow a stem, open or round its head, thicken it, and move, size and
-// broaden its leaves. 捏瓶子 (VaseShaper) shapes the vase itself: glaze, finish, crackle, belly / neck / mouth,
-// window and relief pieces, kept with 存下瓶子 and shown under his flowers too. 花谱 shows every flower at once.
+// 花瓶 / A Daily Bouquet: the bouquet the AI put in the porcelain vase (through the API or the MCP tool,
+// server/store.ts), turning slowly on black, with what it wrote beside it; the days before are kept to look back on. 我来插 is her own vase: she drops in as many
+// of the flowers as she likes, taps one to choose it, and turns, tilts and lengthens it with sliders; she can also bow
+// a stem, open or round its head, thicken it, and move, size and broaden its leaves; 插好了 keeps it (it is the user's;
+// the AI is not told). A tap on the vase lets a few petals fall; pinch, the wheel or ＋/－ bring it nearer. 捏瓶子 (VaseShaper)
+// shapes the vase itself: glaze, finish, crackle, belly / neck / mouth, window and relief pieces, kept with 存下瓶子
+// and shown under his flowers too. 花谱 shows every flower at once.
 // Classes carry the vs- prefix.
 
 type VaseData = { today: Bouquet | null; history: Bouquet[]; mine?: HerVase | null; style?: VaseStyle | null };
@@ -195,7 +196,7 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
   };
   const choose = (i: number | null) => { setSelected(i); sceneRef.current?.select(i); };
   const add = (kind: FlowerKind) => {
-    if (!sceneMod.current || !sceneRef.current || mine.length >= MAX_HER_STEMS) return;
+    if (!sceneMod.current || !sceneRef.current) return;
     const pose = sceneMod.current.defaultPose(kind, flowerSpec(kind).colors[0], Math.random);
     const i = sceneRef.current.addPose(pose);
     setMine((m) => [...m, pose]); setDirty(true); setNote('');
@@ -220,22 +221,26 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
       const body = await r.json().catch(() => null);
       if (!r.ok) throw new Error(body?.error ?? '没存上');
       setData((d) => (d ? { ...d, mine: body.mine } : d));
-      setDirty(false); setNote('插好啦，AI 也会知道你今天自己插了一瓶。');
+      setDirty(false); setNote('插好啦。点一下花瓶，花瓣会落下来。');
     } catch (error) {
       setNote(error instanceof Error ? error.message : '没存上，再试一次');
     } finally { setSaving(false); }
   };
 
-  // a tap (not a drag) on a flower chooses it, in her own vase
+  // a tap (not a drag): on a flower in her own vase it chooses that flower; on the vase itself (his or hers) a few
+  // petals let go and drift down to the table
   useEffect(() => {
     const el = hostRef.current;
-    if (!el || mode !== 'mine' || catalog) return;
+    if (!el || mode === 'vase' || catalog) return;
     let start: { x: number; y: number } | null = null;
     const down = (e: PointerEvent) => { start = { x: e.clientX, y: e.clientY }; };
     const up = (e: PointerEvent) => {
-      if (start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
-        const i = sceneRef.current?.pick(e.clientX, e.clientY) ?? null;
-        setSelected(i); sceneRef.current?.select(i);
+      const scene = sceneRef.current;
+      if (scene && start && Math.hypot(e.clientX - start.x, e.clientY - start.y) < 6) {
+        const i = mode === 'mine' ? scene.pick(e.clientX, e.clientY) : null;
+        if (i !== null) { setSelected(i); scene.select(i); }
+        else if (scene.onVase(e.clientX, e.clientY)) scene.shedPetals();
+        else if (mode === 'mine') { setSelected(null); scene.select(null); }
       }
       start = null;
     };
@@ -244,6 +249,32 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
     return () => { el.removeEventListener('pointerdown', down); el.removeEventListener('pointerup', up); };
   }, [mode, catalog]);
 
+  // nearer or further: two fingers pinching, the mouse wheel, or the ＋ / － buttons
+  useEffect(() => {
+    const el = hostRef.current;
+    if (!el) return;
+    const fingers = new Map<number, { x: number; y: number }>();
+    let spread = 0;
+    const gap = () => { const [a, b] = [...fingers.values()]; return Math.hypot(a.x - b.x, a.y - b.y); };
+    const down = (e: PointerEvent) => { fingers.set(e.pointerId, { x: e.clientX, y: e.clientY }); if (fingers.size === 2) spread = gap(); };
+    const move = (e: PointerEvent) => {
+      if (!fingers.has(e.pointerId)) return;
+      fingers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (fingers.size === 2 && spread > 0) { const now = gap(); sceneRef.current?.zoomBy(spread / now); spread = now; }
+    };
+    const up = (e: PointerEvent) => { fingers.delete(e.pointerId); spread = 0; };
+    const wheel = (e: WheelEvent) => { e.preventDefault(); sceneRef.current?.zoomBy(Math.exp(e.deltaY * 0.0015)); };
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+    el.addEventListener('wheel', wheel, { passive: false });
+    return () => {
+      el.removeEventListener('pointerdown', down); el.removeEventListener('pointermove', move);
+      el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); el.removeEventListener('wheel', wheel);
+    };
+  }, []);
+
   const isToday = !picked || picked === todayKey();
   const current = selected !== null ? mine[selected] : null;
 
@@ -251,6 +282,10 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
     <div className="vs-page">
       <div className="vs-glow" aria-hidden="true" />
       <div ref={hostRef} className="vs-stage" />
+      <div className="vs-zoom" aria-label="远近">
+        <button type="button" className="vs-icon" onClick={() => sceneRef.current?.zoomBy(0.8)} aria-label="拉近">＋</button>
+        <button type="button" className="vs-icon" onClick={() => sceneRef.current?.zoomBy(1.25)} aria-label="拉远">－</button>
+      </div>
       <header className="vs-top">
         {onBack ? (
           <button type="button" className="vs-icon" onClick={onBack} aria-label="返回">
@@ -280,7 +315,7 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
         )}
         {catalog ? (
           <>
-            <p className="vs-lead">这些是能挑的花：AI 每天从里面选一束插给你，你也可以自己插。</p>
+            <p className="vs-lead">这些是能挑的花：AI 想送你花的时候从里面挑，你也可以自己插。</p>
             <ul className="vs-catalog">
               {FLOWERS.map((f) => (
                 <li key={f.kind}>
@@ -297,7 +332,7 @@ export default function VasePage({ onBack }: { onBack?: () => void }) {
           <>
             <div className="vs-picker" aria-label="放一枝进去">
               {FLOWERS.map((f) => (
-                <button type="button" key={f.kind} onClick={() => add(f.kind)} disabled={mine.length >= MAX_HER_STEMS}>
+                <button type="button" key={f.kind} onClick={() => add(f.kind)}>
                   <i style={{ background: PALETTE[f.colors[0]] }} />{f.name}
                 </button>
               ))}

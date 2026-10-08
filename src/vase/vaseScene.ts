@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { POSE_LIMITS, flowerSpec, type BouquetStem, type FlowerKind, type PosedStem } from './flowerCatalog';
-import { HEAD_RADIUS, buildStem, carvedSpray, seeded } from './flowers';
+import { HEAD_RADIUS, buildStem, carvedSpray, seeded, shedPetal } from './flowers';
 import { DEFAULT_STYLE, WINDOW_SHAPES, type Finish, type Relief, type ReliefType, type VaseShape, type VaseStyle, type VaseWindow, type WindowShape } from './vaseStyle';
 
 // The vase: porcelain in the yuhuchun shape (a flared mouth, a long slender neck, a low round belly, a foot ring),
@@ -558,6 +558,9 @@ function disposeGroup(group: THREE.Object3D) {
 }
 
 type Placed = { mesh: THREE.Mesh; born: number; phase: number; pose: PosedStem };
+/** A petal let go: drifting down, swaying and turning, then lying on the table a while and fading. */
+type Falling = { mesh: THREE.Mesh; vel: THREE.Vector3; spin: THREE.Vector3; sway: number; landed: number | null; life: number };
+
 
 /** Where the mouth and the neck are now (they move when she makes the vase taller or shorter). */
 const MOUTH = new THREE.Vector3(0, MOUTH_Y, 0);
@@ -625,6 +628,11 @@ export class VaseScene {
   private resizeObs: ResizeObserver;
   private fit = { y: 1.7, h: 3.6, w: 1.2 };
   private fitNow = { y: 1.7, h: 3.6, w: 1.2 };
+  /** How close she has brought the vase: 1 frames it whole, smaller is nearer. */
+  private zoom = 1;
+  private zoomNow = 1;
+  private petalMat = new THREE.MeshStandardMaterial({ vertexColors: true, side: THREE.DoubleSide, roughness: 0.65, transparent: true });
+  private falling: Falling[] = [];
 
   constructor(private host: HTMLElement) {
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -770,6 +778,76 @@ export class VaseScene {
 
   setAutoRotate(on: boolean) { this.controls.autoRotate = on; }
 
+  /** Bring the vase nearer (k < 1) or further (k > 1); 0.3 is close enough to see a petal's vein, 1.6 the whole table. */
+  zoomBy(k: number) { this.zoom = Math.min(1.6, Math.max(0.3, this.zoom * k)); }
+  resetZoom() { this.zoom = 1; }
+
+  /** Was this point of the screen on the vase itself? */
+  onVase(clientX: number, clientY: number) { return this.pickSurface(clientX, clientY) !== null; }
+
+  /** A tap on the vase: a few petals let go of the flowers and drift down to the table - each flower its own petals,
+   * at their own size (a rose lets go a rose petal, a pear branch its small white petals); leaves never fall. */
+  shedPetals() {
+    const shedding = this.stems.filter((s) => shedPetal(s.pose.kind, s.pose.color) !== null);
+    if (!shedding.length) return;
+    const n = Math.min(24, 5 + shedding.length * 2);
+    for (let i = 0; i < n && this.falling.length < 90; i++) {
+      const st = shedding[Math.floor(Math.random() * shedding.length)], p = st.pose;
+      const geo = shedPetal(p.kind, p.color, p.petalWidth ?? 1)!;
+      // the size it has on its flower: heads are built at HEAD_SCALE, branch flowers at their own scale
+      const size = p.kind === 'blossom' ? 1.1 : p.kind === 'pear-blossom' ? 1.55 * (p.headSize ?? 1)
+        : p.kind === 'babys-breath' || p.kind === 'lavender' ? 1 : HEAD_SCALE * (p.headSize ?? 1);
+      // heads shed round the head; branches and sprays anywhere along their flowering end
+      const head = headOf(p).pos;
+      const spray = ['blossom', 'pear-blossom', 'babys-breath', 'lavender'].includes(p.kind);
+      const at = (spray ? MOUTH.clone().lerp(head, 0.45 + Math.random() * 0.55) : head.clone())
+        .add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5) * 0.6, (Math.random() - 0.5)).multiplyScalar(spray ? 0.24 : HEAD_RADIUS[p.kind] * HEAD_SCALE * 0.7));
+      const out = new THREE.Vector3(at.x, 0, at.z);
+      if (out.lengthSq() < 1e-4) out.set(Math.random() - 0.5, 0, Math.random() - 0.5);
+      out.normalize().multiplyScalar(0.04 + Math.random() * 0.08);
+      const mesh = new THREE.Mesh(geo, this.petalMat.clone());
+      mesh.position.copy(at);
+      mesh.rotation.set(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU);
+      mesh.scale.setScalar(size * (0.82 + Math.random() * 0.18));
+      this.scene.add(mesh);
+      // big petals float down slower and sway wider than little ones
+      const big = Math.min(1, size * Math.max(0.05, geo.boundingBox ? geo.boundingBox.getSize(new THREE.Vector3()).length() : 0.1) / 0.4);
+      this.falling.push({
+        mesh,
+        vel: new THREE.Vector3(out.x, -(0.16 + Math.random() * 0.1 - big * 0.06), out.z),
+        spin: new THREE.Vector3((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3),
+        sway: Math.random() * TAU,
+        landed: null,
+        life: 4 + Math.random() * 3,
+      });
+    }
+  }
+
+  private dropPetals(dt: number, t: number) {
+    const rAt = this.vase.userData.rAt as ((y: number) => number) | undefined;
+    for (let i = this.falling.length - 1; i >= 0; i--) {
+      const f = this.falling[i], m = f.mesh;
+      if (f.landed === null) {
+        // a slow, fluttering fall: sideways sway, a little turning, drag keeps it gentle
+        m.position.addScaledVector(f.vel, dt);
+        m.position.x += Math.sin(t * 2.1 + f.sway) * 0.12 * dt;
+        m.position.z += Math.cos(t * 1.7 + f.sway) * 0.12 * dt;
+        m.rotation.x += f.spin.x * dt; m.rotation.y += f.spin.y * dt; m.rotation.z += f.spin.z * dt;
+        f.vel.y = Math.max(-0.34, f.vel.y - 0.05 * dt);
+        // it slides off the vase's skin rather than through it
+        if (rAt && m.position.y < MOUTH.y) {
+          const r = Math.hypot(m.position.x, m.position.z), skin = rAt(Math.max(0, m.position.y)) + 0.025;
+          if (r < skin) { const k = skin / Math.max(r, 1e-3); m.position.x *= k; m.position.z *= k; }
+        }
+        if (m.position.y <= 0.006) { m.position.y = 0.006; m.rotation.set(-Math.PI / 2 + (Math.random() - 0.5) * 0.3, 0, Math.random() * TAU); f.landed = t; }
+      } else {
+        const left = f.life - (t - f.landed);
+        (m.material as THREE.MeshStandardMaterial).opacity = Math.max(0, Math.min(1, left / 1.5));
+        if (left <= 0) { this.scene.remove(m); (m.material as THREE.Material).dispose(); this.falling.splice(i, 1); }
+      }
+    }
+  }
+
   /** A picture of the vase as it stands now (without the white dot), on the page's dark ground with its warm glow and a
    * small caption, as a PNG to save or share. */
   snapshot(caption: string): Promise<Blob> {
@@ -885,8 +963,10 @@ export class VaseScene {
     this.fitNow.h += (this.fit.h - this.fitNow.h) * e;
     this.fitNow.w += (this.fit.w - this.fitNow.w) * e;
     const tan = Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2));
-    const dist = Math.max(this.fitNow.h / 2 / tan, this.fitNow.w / 2 / (tan * this.camera.aspect)) * 1.1 + 0.6;
+    this.zoomNow += (this.zoom - this.zoomNow) * (1 - Math.exp(-dt * 8));
+    const dist = (Math.max(this.fitNow.h / 2 / tan, this.fitNow.w / 2 / (tan * this.camera.aspect)) * 1.1 + 0.6) * this.zoomNow;
     this.controls.target.y = this.fitNow.y;
+    if (this.falling.length) this.dropPetals(dt, t);
     const off = this.camera.position.clone().sub(this.controls.target);
     off.setLength(dist);
     this.camera.position.copy(this.controls.target).add(off);
@@ -909,6 +989,7 @@ export class VaseScene {
       });
     });
     this.flowerMat.dispose();
+    this.petalMat.dispose();
     this.marker.children.forEach((o) => { const m = (o as THREE.Sprite).material; m.map?.dispose(); m.dispose(); });
     this.selectedMat.dispose();
     this.scene.environment?.dispose();

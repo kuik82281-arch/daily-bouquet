@@ -52,5 +52,5 @@ export const STEM_LIMITS: Record<keyof StemShape, [number, number]> = {
 };
 /** The vase she arranges herself (one, kept until she changes it). */
 export type HerVase = { stems: PosedStem[]; updatedAt: string };
-export const MAX_HER_STEMS = 20;
+export const MAX_HER_STEMS = 1000;
 export const POSE_LIMITS = { tilt: [0, 1.4], len: [0.6, 2.8] } as const;
